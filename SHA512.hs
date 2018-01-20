@@ -1,3 +1,5 @@
+module SHA512 where
+
 import           Mini
 import           SHAHelper
 
@@ -36,4 +38,5 @@ kSeed = map bIntTo64 [
 
 compressHStep = SHAHelper.compressHStep (compressHBase 28 34 39) (compressHBase 14 18 41)
 extendWStep = SHAHelper.extendWStep (extendWBase 1 8 7) (extendWBase 19 61 6)
-sha512 = textToSha Main.compressHStep Main.extendWStep 512 kSeed hSeed
+sha512k = textToSha SHA512.compressHStep SHA512.extendWStep 512 kSeed
+sha512 = sha512k hSeed

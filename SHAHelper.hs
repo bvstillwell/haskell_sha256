@@ -3,8 +3,9 @@ module SHAHelper where
 import           Data.Bits
 import           Data.Char       (intToDigit, ord)
 import           Data.List.Split
+import           Debug.Trace
 import           Mini
-import           Numeric         (showHex)
+import           Text.Printf
 
 textToChunks :: Int -> String -> [[[B]]]
 textToChunks size theText = let
@@ -60,8 +61,9 @@ compressH compressHStep extendWStep kSeed h w =
     let hResult = foldl (\hAcc (k, w) -> compressHStep hAcc k w) h (zip kSeed (extendW extendWStep (length kSeed) w))
     in zipWith bAddNoCarry h hResult
 
-
 textToSha :: ([[B]] -> [B] -> [B] -> [[B]]) -> ([[B]] -> [B]) -> Int -> [[B]] -> [[B]] -> String -> String
 textToSha compressHStep extendWStep size kSeed hSeed theText =
     let results = map bToInt $ foldl (compressH compressHStep extendWStep kSeed) hSeed (textToChunks size theText)
-    in concatMap (`showHex` "") results
+        printSize = if size < 384 then "8" else "16"
+    in  concatMap (printf ("%0" ++ printSize ++ "x")) results
+
