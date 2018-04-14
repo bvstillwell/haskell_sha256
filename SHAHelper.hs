@@ -64,6 +64,6 @@ compressH compressHStep extendWStep kSeed h w =
 textToSha :: ([[B]] -> [B] -> [B] -> [[B]]) -> ([[B]] -> [B]) -> Int -> [[B]] -> [[B]] -> String -> String
 textToSha compressHStep extendWStep size kSeed hSeed theText =
     let results = map bToInt $ foldl (compressH compressHStep extendWStep kSeed) hSeed (textToChunks size theText)
-        printSize = if size < 384 then "8" else "16"
-    in  concatMap (printf ("%0" ++ printSize ++ "x")) results
+        printSize = quot size 32
+    in  concatMap (printf ("%0" ++ show printSize ++ "x")) results
 

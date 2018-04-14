@@ -1,5 +1,5 @@
 import           Data.List
-import           SHA256     (sha256)
+import           SHA        (sha)
 import           SHA384     (sha384)
 import           SHA512     (sha512)
 import           Test.HUnit
@@ -17,7 +17,7 @@ testCases = [
     )]
 
 methods = [
-    SHA256.sha256,
+    SHA.sha 256,
     SHA384.sha384,
     SHA512.sha512]
 
@@ -30,3 +30,5 @@ tests2 = concat [zip4 sizes methods (replicate (length methods) vector) results 
 
 tests = TestList [TestCase (assertEqual ("Sha" ++ show size ++ ":" ++ vector) result (method vector)) |
     (size, method, vector, result) <- tests2]
+
+results = runTestTT tests

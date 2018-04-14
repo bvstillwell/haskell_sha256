@@ -12,6 +12,7 @@ hSeed = map bIntTo64 [
     0x67332667ffc00b31,
     0x8eb44a8768581511,
     0xdb0c2e0d64f98fa7,
-    0x47b5481dbefa4fa4]
+    0x47b5481dbefa4fa4
+    ]
 
 sha384 theText = take 96 $ SHA512.sha512k hSeed theText
