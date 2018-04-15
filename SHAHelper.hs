@@ -27,8 +27,8 @@ textToChunks size theText = let
         bPadInt x = bPad sizeDiv4 O (bIntTo x)
 
 -- extend W step
-extendWBase :: Int -> Int -> Int -> [B] -> [B]
-extendWBase a b c x = bRotR a x `bXor` bRotR b x `bXor` bShR c x
+extendWBase :: (Int, Int, Int) -> [B] -> [B]
+extendWBase (a, b, c) x = bRotR a x `bXor` bRotR b x `bXor` bShR c x
 
 extendWStep :: ([B] -> [B]) -> ([B] -> [B]) -> [[B]] -> [B]
 extendWStep s0 s1 ws =
@@ -43,8 +43,8 @@ extendW extendWStep steps chunks = foldl (\wAcc _ -> wAcc ++ [extendWStep wAcc])
 
 
 -- Compress H func
-compressHBase :: Int -> Int -> Int -> [B] -> [B]
-compressHBase a b c x = bRotR a x `bXor` bRotR b x `bXor` bRotR c x
+compressHBase :: (Int, Int, Int) -> [B] -> [B]
+compressHBase (a, b, c) x = bRotR a x `bXor` bRotR b x `bXor` bRotR c x
 
 compressHStep :: ([B] -> [B]) -> ([B] -> [B]) ->  [[B]] -> [B] -> [B] -> [[B]]
 compressHStep s0 s1 [a, b, c, d, e, f, g, h] k w =
@@ -62,6 +62,8 @@ compressH compressHStep extendWStep kSeed h w =
     in zipWith bAddNoCarry h hResult
 
 textToSha :: ([[B]] -> [B] -> [B] -> [[B]]) -> ([[B]] -> [B]) -> Int -> [[B]] -> [[B]] -> String -> String
+-- textToSha compressHStep extendWStep size kSeed hSeed theText | trace ("hSeed" ++ show (hSeed)) False = undefined
+-- textToSha compressHStep extendWStep size kSeed hSeed theText | trace ("kSeed" ++ show (kSeed)) False = undefined
 textToSha compressHStep extendWStep size kSeed hSeed theText =
     let results = map bToInt $ foldl (compressH compressHStep extendWStep kSeed) hSeed (textToChunks size theText)
         printSize = quot size 32
