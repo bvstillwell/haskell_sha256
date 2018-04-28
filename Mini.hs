@@ -50,7 +50,6 @@ instance Read B where
     readsPrec _ (x:xs) = [(bChrToB x, xs)]
     readList x = [(bStrToB x, "")]
 
-
 bChrToB :: Char -> B
 bChrToB 'x' = X
 bChrToB 'o' = O
@@ -106,7 +105,6 @@ bShR a xs = O : bShR (a-1) (init xs)
 
 bXor = zipWith bSXor
 bAnd = zipWith bSAnd
-bOr = zipWith bSOr
 bNot = map bSNot
 
 bRotR :: Int -> [B] -> [B]
@@ -120,13 +118,14 @@ bRotL (x:xs) a = bRotL (xs ++ [x]) (a-1)
 
 
 bSAnd :: B -> B -> B
-bSAnd X X = X
-bSAnd _ _ = O
-
-bSOr :: B -> B -> B
-bSOr X _ = X
-bSOr _ X = X
-bSOr _ _ = O
+bSAnd a b
+    | a > b = bSAnd b a
+    | a == b = a
+    | a == O = O
+    | a == X = b
+    | otherwise = case (a, b) of
+        (Ba as, Ba bs) -> Ba (as ++ bs) -- And 2 Xor lists
+        (a', b') -> Ba [a', b']
 
 bSXor :: B -> B -> B
 bSXor a b
@@ -134,12 +133,15 @@ bSXor a b
     | a == b = O
     | a == O = b
     | otherwise = case (a, b) of
+        (X, Bx [X, n]) -> n
+        (X, Bx (X:xs)) -> Bx xs
         (Bx as, Bx bs) -> Bx (as ++ bs) -- Xor 2 Xor lists
         (a', b') -> Bx [a', b']
 
 bSNot :: B -> B
 bSNot X = O
 bSNot O = X
+bSNot a = bSXor X a
 
 bSAdd :: B -> B -> B -> (B, B)
 bSAdd O O O = (O, O)
