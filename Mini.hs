@@ -3,18 +3,48 @@
 module Mini where
 
 import           Data.Bits
+import           Data.List
+import           Debug.Trace
 
-data B = X | O deriving Eq
+data B = O | X | V Int | Ba [B] | Bx [B] deriving (Eq, Ord)
 
+bEdges :: B -> Int
+bEdges (Ba []) = 0
+bEdges (Ba (x:xs)) = 1 + bEdges x + bEdges (Ba xs)
+bEdges (Bx []) = 0
+bEdges (Bx (x:xs)) = 1 + bEdges x + bEdges (Bx xs)
+bEdges _ = 0
+
+bNodes :: B -> Int
+bNodes (Ba []) = 0
+bNodes (Ba (x:xs)) = bNodes x + bNodes (Ba xs)
+bNodes (Bx []) = 0
+bNodes (Bx (x:xs)) = bNodes x + bNodes (Bx xs)
+bNodes _ = 1
+
+
+-- bX :: B -> B -> B
+-- bX a b
+--     | trace (show a ++ "," ++ show b) False = undefined
+--     | a > b = bX b a
+--     | a == O = b
+--     | a == b = O
+--     | otherwise =
+--         case (a, b) of (Bx c d, Bx e f) -> foldl1 bX $ sort [c, d, e, f]
+--                        (c, Bx e f) -> foldl1 bX $ sort [a, e, f]
+--                        (c, d) -> Bx a b
 
 instance Show B where
     show X  = "x"
     show O  = "o"
-
+    show (V x)  = "v" ++ show x
+    show (Bx xs)  = "X(" ++ show xs ++ ")"
+    show (Ba xs)  = "A(" ++ show xs ++ ")"
 
 instance Show [B] where
     show [] = ""
-    show (x:xs) = show x ++ show xs
+    show (x:xs) =
+        if null xs then show x else show x ++ ":" ++ show xs
 
 instance Read B where
     readsPrec _ (x:xs) = [(bChrToB x, xs)]
@@ -31,6 +61,7 @@ bStrToB = map bChrToB
 
 bPad :: Int -> B -> [B] -> [B]
 bPad i a xs = if length xs < i then a : bPad (i-1) a xs else xs
+bPad4 = bPad 4 O
 bPad8 = bPad 8 O
 bPad32 = bPad 32 O
 bPad64 = bPad 64 O
@@ -38,6 +69,7 @@ bPad64 = bPad 64 O
 bIntTo :: Integer -> [B]
 bIntTo 0 = []
 bIntTo a = bIntTo (shiftR a 1) ++ [if odd a then X else O]
+bIntTo4 x = bPad4 $ bIntTo x
 bIntTo8 x = bPad8 $ bIntTo x
 bIntTo32 x = bPad32 $ bIntTo x
 bIntTo64 x = bPad64 $ bIntTo x
@@ -97,9 +129,13 @@ bSOr _ X = X
 bSOr _ _ = O
 
 bSXor :: B -> B -> B
-bSXor X O = X
-bSXor O X = X
-bSXor _ _ = O
+bSXor a b
+    | a > b = bSXor b a
+    | a == b = O
+    | a == O = b
+    | otherwise = case (a, b) of
+        (Bx as, Bx bs) -> Bx (as ++ bs) -- Xor 2 Xor lists
+        (a', b') -> Bx [a', b']
 
 bSNot :: B -> B
 bSNot X = O
@@ -114,7 +150,3 @@ bSAdd X O O = (O, X)
 bSAdd X O X = (X, O)
 bSAdd X X O = (X, O)
 bSAdd X X X = (X, X)
-
-
-
-
