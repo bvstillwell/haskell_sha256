@@ -38,13 +38,17 @@ instance Show B where
     show X  = "x"
     show O  = "o"
     show (V x)  = "v" ++ show x
-    show (Bx xs)  = "X(" ++ show xs ++ ")"
-    show (Ba xs)  = "A(" ++ show xs ++ ")"
+    show (Bx xs)  = "(" ++ show (xs, "^") ++ ")"
+    show (Ba xs)  = "(" ++ show (xs, "&") ++ ")"
 
-instance Show [B] where
-    show [] = ""
-    show (x:xs) =
-        if null xs then show x else show x ++ ":" ++ show xs
+-- instance Show [B] where
+--     show [] = ""
+--     show (x:xs) =
+--         if null xs then show x else show x ++ ":" ++ show xs
+
+instance Show ([B], String) where
+    show (x : xs, a) =
+        if null xs then show x else show x ++ a ++ show (xs, a)
 
 instance Read B where
     readsPrec _ (x:xs) = [(bChrToB x, xs)]

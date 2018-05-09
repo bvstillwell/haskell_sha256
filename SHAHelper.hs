@@ -58,14 +58,20 @@ compressHStep s0 s1 [a, b, c, d, e, f, g, h] k w =
 
 compressH :: ([[B]] -> [B] -> [B] -> [[B]]) -> ([[B]] -> [B]) -> [[B]] -> [[B]] -> [[B]] -> [[B]]
 compressH compressHStep extendWStep kSeed h w =
-    let hResult = foldl (\hAcc (k, w) -> compressHStep hAcc k w) h (zip kSeed (extendW extendWStep (length kSeed) w))
-    in zipWith bAddNoCarry h hResult
+    let extendW' = extendW extendWStep (length kSeed) w
+        zipKSeedW = zip kSeed extendW'
+        hResult = foldl (\hAcc (k, w) -> compressHStep hAcc k w) h zipKSeedW
+    in
+        zipWith bAddNoCarry h hResult
 
 textToSha :: ([[B]] -> [B] -> [B] -> [[B]]) -> ([[B]] -> [B]) -> Int -> [[B]] -> [[B]] -> String -> String
 -- textToSha compressHStep extendWStep size kSeed hSeed theText | trace ("hSeed" ++ show (hSeed)) False = undefined
 -- textToSha compressHStep extendWStep size kSeed hSeed theText | trace ("kSeed" ++ show (kSeed)) False = undefined
 textToSha compressHStep extendWStep size kSeed hSeed theText =
-    let results = map bToInt $ foldl (compressH compressHStep extendWStep kSeed) hSeed (textToChunks size theText)
+    let theChunks = textToChunks size theText
+        processFunc = compressH compressHStep extendWStep kSeed
+        theGraph = foldl processFunc hSeed theChunks
+        results = map bToInt theGraph
         printSize = quot size 32
     in  concatMap (printf ("%0" ++ show printSize ++ "x")) results
 
