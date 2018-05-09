@@ -131,15 +131,28 @@ bSAnd a b
         (Ba as, Ba bs) -> Ba (as ++ bs) -- And 2 Xor lists
         (a', b') -> Ba [a', b']
 
+
+
+bSXorSetRemove :: B -> [B] -> [B]
+bSXorSetRemove a [] = [a]
+bSXorSetRemove a (b:bc)
+                | a == b    = bc
+                | otherwise = b : bSXorSetRemove a bc
+
+
+bX :: [B] -> B
+bX [] = O
+bX [a] = a
+
 bSXor :: B -> B -> B
 bSXor a b
     | a > b = bSXor b a
     | a == b = O
     | a == O = b
+    -- | trace (show a ++ " - " ++ show b) False = undefined
     | otherwise = case (a, b) of
-        (X, Bx [X, n]) -> n
-        (X, Bx (X:xs)) -> Bx xs
         (Bx as, Bx bs) -> Bx (as ++ bs) -- Xor 2 Xor lists
+        (c, Bx xs) -> bX (bSXorSetRemove c xs) -- Remove from list if existing
         (a', b') -> Bx [a', b']
 
 bSNot :: B -> B
