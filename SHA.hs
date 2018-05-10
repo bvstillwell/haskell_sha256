@@ -7,19 +7,28 @@ import           SHAHelper
 import           Text.Printf
 
 sha :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> String -> String
-sha size c1 c2 e1 e2 input =
+sha size s0Rot s1Rot s0RotW s1RotW input =
     let
-        mhSeed = map (take (quot size 8)) hSeed
-        mkSeed = map (take (quot size 8)) (take (quot size 4) kSeed)
-        acompressHStep = SHAHelper.compressHStep (compressHBase c1) (compressHBase c2)
-        aextendWStep = SHAHelper.extendWStep (extendWBase e1) (extendWBase e2)
+        fourth = quot size 4
+        eighth = quot size 8
+        thirtySecond = quot size 32
+
+        -- Create the correct seed size
+        mhSeed = map (take eighth) hSeed
+        mkSeed = map (take eighth) (take fourth kSeed)
+
+        -- Create the processing  function
+        processFunc = compressHLoop s0Rot s1Rot s0RotW s1RotW mkSeed
+
+        -- Convert string into chunks
         theChunks = textToChunks size input
-        processFunc = compressH acompressHStep aextendWStep mkSeed
+
+        -- Loop through the chunks
         theGraph = foldl processFunc mhSeed theChunks
+
         results = map bToInt theGraph
-        printSize = quot size 32
     in
-        concatMap (printf ("%0" ++ show printSize ++ "x")) results
+        concatMap (printf ("%0" ++ show thirtySecond ++ "x")) results
 
 sha32 = sha 32 (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0)
 sha64 = sha 64 (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0)
