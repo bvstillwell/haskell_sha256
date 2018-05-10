@@ -29,4 +29,4 @@ tests2 = concat [zip4 sizes methods (replicate (length methods) vector) results 
 tests = TestList [TestCase (assertEqual ("Sha" ++ show size ++ ":" ++ vector) result (method vector)) |
     (size, method, vector, result) <- tests2]
 
-results = runTestTT tests
+runTests = runTestTT tests

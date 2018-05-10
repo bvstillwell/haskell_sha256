@@ -1,6 +1,6 @@
 module Graph where
 
-import           Mini
+import           BOperations
 import           SHAHelper
 
 

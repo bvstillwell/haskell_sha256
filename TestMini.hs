@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
+import           BOperations
+import           Convert
 import           Debug.Trace
-import           Mini
 import           SHAHelper
 import           Test.QuickCheck
 

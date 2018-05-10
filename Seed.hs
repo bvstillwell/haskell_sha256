@@ -1,6 +1,6 @@
 module Seed where
 
-import           Mini
+import           Convert
 
 hSeed = map bIntTo64 [
     0x6a09e667f3bcc908,
