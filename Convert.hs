@@ -5,21 +5,14 @@ import           BOperations
 import           Data.Bits
 import           Data.Char       (intToDigit, ord)
 import           Data.List.Split
+import           Text.Printf
 
 instance Show B where
     show X  = "x"
     show O  = "o"
-    show (V x)  = "v" ++ show x
-    show (Bx xs)  = "(" ++ show (xs, "^") ++ ")"
-    show (Ba xs)  = "(" ++ show (xs, "&") ++ ")"
-
-instance {-# OVERLAPS #-} Show ([B], String) where
-    show (x : xs, a) =
-        if null xs then show x else show x ++ a ++ show (xs, a)
-
-instance Read B where
-    readsPrec _ (x:xs) = [(bChrToB x, xs)]
-    readList x = [(bStrToB x, "")]
+    show (V x)  = printf "%02d" x
+    show (Bx a b) = "(" ++ show a ++ "^" ++ show b ++ ")"
+    show (Ba a b) = "(" ++ show a ++ "&" ++ show b ++ ")"
 
 bChrToB :: Char -> B
 bChrToB 'x' = X

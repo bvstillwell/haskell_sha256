@@ -10,12 +10,14 @@ instance Arbitrary B where
     arbitrary = do
         r <- choose (1, 10) :: Gen Int
         n <- choose (0, 3) :: Gen Int
-        xs <- sequence [ arbitrary | _ <- [1..n] ]
+        -- s <- choose (0, 5) :: Gen Int
+        -- a <- arbitrary
+        -- b <- arbitrary
         case r of n
                     | n == 1 -> return O
                     | n == 2 -> return X
-                    | n == 3 -> return (Ba xs)
-                    | n == 4 -> return (Bx xs)
+                    -- | n == 3 -> return (Ba a b)
+                    -- | n == 4 -> return (Bx a b)
                     | otherwise -> return (V r)
 
 
@@ -34,6 +36,8 @@ prop_bXClear a = bSXor a a == O
 prop_bAReverse = fbReverse bSAnd
 prop_bAClear a = fbReverseEq bSAnd O a O
 prop_bANop a = fbReverseEq bSAnd X a a
+
+prop_bAddReverse1 a b c = bSAdd a b c == bSAdd b a c
 
 -- prop_bNot = fbThrice bSNot
 --------------------------
