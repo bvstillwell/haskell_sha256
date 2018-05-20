@@ -6,32 +6,30 @@ import           Seed
 import           SHAHelper
 import           Text.Printf
 
-sha :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> String -> String
-sha size s0Rot s1Rot s0RotW s1RotW input =
+sha :: (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> Int -> String -> String
+sha s0Rot s1Rot s0RotW s1RotW size input =
     let
+        thirtySecond = quot size 32
         fourth = quot size 4
         eighth = quot size 8
-        thirtySecond = quot size 32
 
-        -- Create the correct seed size
-        mhSeed = map (take eighth) hSeed
-        mkSeed = map (take eighth) (take fourth kSeed)
+        hInit = map (take eighth) hSeed -- Create the correct list size
+        kInit = map (take eighth) (take fourth kSeed) -- Create the correct list size
 
-        -- Create the processing  function
-        processFunc = compressHLoop s0Rot s1Rot s0RotW s1RotW mkSeed
-
-        -- Convert string into chunks
-        theChunks = textToChunks size input
-
-        -- Loop through the chunks
-        theGraph = foldl processFunc mhSeed theChunks
-
-        results = map bToInt theGraph
+        theChunks = textToChunks input size -- Turn the string into chunks
+        theGraph = shaChunks s0Rot s1Rot s0RotW s1RotW hInit kInit theChunks -- Create the graph
+        results = map bToInt theGraph -- Convert back into a readbale fomat
     in
         concatMap (printf ("%0" ++ show thirtySecond ++ "x")) results
 
-sha32 = sha 32 (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0)
-sha64 = sha 64 (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0)
-sha128 = sha 128 (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0)
-sha256 = sha 256 (2, 13, 22) (6, 11, 25) (7, 18, 3) (17, 19, 10)
-sha512 = sha 512 (28, 34, 39) (14, 18, 41) (1, 8, 7) (19, 61, 6)
+shaChunks s0Rot s1Rot s0RotW s1RotW hInit kInit theChunks =
+    let
+        compressFunc = compressChunk (compressHStep s0Rot s1Rot) (createKWVector s0RotW s1RotW kInit)
+    in
+        foldl compressFunc hInit theChunks
+
+sha32 = sha (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0) 32
+sha64 = sha (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0) 64
+sha128 = sha (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0) 128
+sha256 = sha (2, 13, 22) (6, 11, 25) (7, 18, 3) (17, 19, 10) 256
+sha512 = sha (28, 34, 39) (14, 18, 41) (1, 8, 7) (19, 61, 6) 512

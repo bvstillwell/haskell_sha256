@@ -7,7 +7,7 @@ import           Debug.Trace
 data B = O | X | V Int | Ba [B] | Bx [B] deriving (Eq, Ord)
 
 bAddNoCarry :: [B] -> [B] -> [B]
-bAddNoCarry xs ys = reverse $ bAddNoCarry' (reverse xs) (reverse ys) O
+bAddNoCarry xs ys = reverse (bAddNoCarry' (reverse xs) (reverse ys) O)
 bAddNoCarry' [] _ _ = []
 bAddNoCarry' (x:xs) (y:ys) c1 = v : bAddNoCarry' xs ys c2
     where (c2, v) = bSAdd c1 x y

@@ -27,8 +27,8 @@ extendWLoop s0w s1w steps chunks = foldl (\wAcc _ -> wAcc ++ [extendWStep s0w s1
 compressHCalc :: (Int, Int, Int) -> [B] -> [B]
 compressHCalc (a, b, c) x = bRotR a x `bXor` bRotR b x `bXor` bRotR c x
 
-compressHStep ::  (Int, Int, Int) ->  (Int, Int, Int) ->  [[B]] -> [B] -> [B] -> [[B]]
-compressHStep s0Rot s1Rot [a, b, c, d, e, f, g, h] k w =
+compressHStep ::  (Int, Int, Int) ->  (Int, Int, Int) ->  [[B]] -> ([B], [B]) -> [[B]]
+compressHStep s0Rot s1Rot [a, b, c, d, e, f, g, h] (k, w) =
     -- S1 := (e rightrotate 6) xor (e rightrotate 11) xor (e rightrotate 25)
     -- ch := (e and f) xor ((not e) and g)
     -- temp1 := h + S1 + ch + k[i] + w[i]
@@ -55,12 +55,23 @@ compressHStep s0Rot s1Rot [a, b, c, d, e, f, g, h] k w =
     in
         [temp1 `bAddNoCarry` temp2, a, b, c, d `bAddNoCarry` temp1, e, f, g]
 
-compressHLoop :: (Int, Int, Int) ->  (Int, Int, Int) -> (Int, Int, Int) ->  (Int, Int, Int) -> [[B]] -> [[B]] -> [[B]] -> [[B]]
-compressHLoop s0Rot s1Rot s0Rotw s1Rotw kSeed h w =
-    let
-        extendWLoop' = extendWLoop s0Rotw s1Rotw (length kSeed) w
-        zipKSeedW = zip kSeed extendWLoop'
-        hResult = foldl (\hAcc (k, w) -> compressHStep s0Rot s1Rot hAcc k w) h zipKSeedW
-    in
-        zipWith bAddNoCarry h hResult
+createKWVector :: (Int, Int, Int) -> (Int, Int, Int) -> [[B]] -> [[B]] -> [([B], [B])]
+-- Return a list of k,w created from a chunk for use in the compressHFunc
+createKWVector s0Rotw s1Rotw kInit chunk = zip kInit (extendWLoop s0Rotw s1Rotw (length kInit) chunk)
 
+compressChunk :: ([[B]] -> ([B], [B]) -> [[B]]) -> ([[B]] -> [([B], [B])]) -> [[B]] -> [[B]] -> [[B]]
+compressChunk compressHFunc kwVectorFunc hInit chunk =
+    let
+        kwVector = kwVectorFunc chunk
+        hResult = foldl compressHFunc hInit kwVector
+    in
+        -- Add the compressed chunk to the current hash value:
+        -- h0 := h0 + a
+        -- h1 := h1 + b
+        -- h2 := h2 + c
+        -- h3 := h3 + d
+        -- h4 := h4 + e
+        -- h5 := h5 + f
+        -- h6 := h6 + g
+        -- h7 := h7 + h
+        zipWith bAddNoCarry hInit hResult
