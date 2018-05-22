@@ -37,7 +37,7 @@ prop_bAReverse = fbReverse bSAnd
 prop_bAClear a = fbReverseEq bSAnd O a O
 prop_bANop a = fbReverseEq bSAnd X a a
 
-prop_bAddReverse1 a b c = bSAdd a b c == bSAdd b a c
+-- prop_bAddReverse1 a b c = bSAdd a b c == bSAdd b a c
 
 -- prop_bNot = fbThrice bSNot
 --------------------------

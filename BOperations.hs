@@ -3,14 +3,17 @@ module BOperations where
 import           Data.Bits
 import           Data.List
 import           Debug.Trace
+import           Text.Printf
 
-data B = O | X | V Int | Ba B B | Bx B B deriving (Eq, Ord)
+data B = O | X | V Int | Ba B B | Bx B B | BAdd B B deriving (Eq, Ord)
 
-bAddNoCarry :: [B] -> [B] -> [B]
-bAddNoCarry xs ys = reverse (bAddNoCarry' (reverse xs) (reverse ys) O)
-bAddNoCarry' [] _ _ = []
-bAddNoCarry' (x:xs) (y:ys) c1 = v : bAddNoCarry' xs ys c2
-    where (c2, v) = bSAdd c1 x y
+instance Show B where
+    show X  = "x"
+    show O  = "o"
+    show (V x)  = printf "%02d" x
+    show (BAdd a b) = "(" ++ show a ++ "+" ++ show b ++ ")"
+    show (Bx a b) = "(" ++ show a ++ "^" ++ show b ++ ")"
+    show (Ba a b) = "(" ++ show a ++ "&" ++ show b ++ ")"
 
 bShL :: Int -> [B] -> [B]
 bShL 0 a = a
@@ -78,12 +81,17 @@ bSor a b
 
 bSAdd :: B -> B -> B -> (B, B)
 -- Result is (carry, value)
--- bSAdd O O O = (O, O)
--- bSAdd O O X = (O, X)
--- bSAdd O X O = (O, X)
--- bSAdd O X X = (X, O)
--- bSAdd X O O = (O, X)
--- bSAdd X O X = (X, O)
--- bSAdd X X O = (X, O)
--- bSAdd X X X = (X, X)
-bSAdd a b c = (bSAnd a b `bSXor` bSAnd b c `bSXor` bSAnd a c, foldl1 bSXor [a, b, c])
+--           (a&b xor b&c xor a&c, xor (a,b,c))
+bSAdd a b c
+    | a > b = bSAdd b a c
+    | b > c = bSAdd a c b
+    | otherwise = case (a, b, c) of
+        (O, O, a) -> (O, a)
+        (O, a, b) -> (bSAnd a b, bSXor a b)
+        (a, b, c) -> (bSAnd a b `bSXor` bSAnd b c `bSXor` bSAnd a c, foldl1 bSXor [a, b, c])
+
+bAddNoCarry :: [B] -> [B] -> [B]
+bAddNoCarry xs ys = reverse (bAddNoCarry' (reverse xs) (reverse ys) O)
+bAddNoCarry' [] _ _ = []
+bAddNoCarry' (x:xs) (y:ys) c1 = v : bAddNoCarry' xs ys c2
+    where (c2, v) = bSAdd c1 x y

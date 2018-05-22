@@ -5,14 +5,7 @@ import           BOperations
 import           Data.Bits
 import           Data.Char       (intToDigit, ord)
 import           Data.List.Split
-import           Text.Printf
 
-instance Show B where
-    show X  = "x"
-    show O  = "o"
-    show (V x)  = printf "%02d" x
-    show (Bx a b) = "(" ++ show a ++ "^" ++ show b ++ ")"
-    show (Ba a b) = "(" ++ show a ++ "&" ++ show b ++ ")"
 
 bChrToB :: Char -> B
 bChrToB 'x' = X

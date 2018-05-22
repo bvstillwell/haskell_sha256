@@ -10,20 +10,22 @@ sha :: (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) 
 sha s0Rot s1Rot s0RotW s1RotW size input =
     let
         thirtySecond = quot size 32
+
+        theChunks = textToChunks input size -- Turn the string into chunks
+        theGraph = shaChunks s0Rot s1Rot s0RotW s1RotW size theChunks -- Create the graph
+        results = map bToInt theGraph -- Convert back into a readbale fomat
+    in
+        concatMap (printf ("%0" ++ show thirtySecond ++ "x")) results
+
+shaChunks :: (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int) -> Int -> [[[B]]] -> [[B]]
+shaChunks s0Rot s1Rot s0RotW s1RotW size theChunks =
+    let
         fourth = quot size 4
         eighth = quot size 8
 
         hInit = map (take eighth) hSeed -- Create the correct list size
         kInit = map (take eighth) (take fourth kSeed) -- Create the correct list size
 
-        theChunks = textToChunks input size -- Turn the string into chunks
-        theGraph = shaChunks s0Rot s1Rot s0RotW s1RotW hInit kInit theChunks -- Create the graph
-        results = map bToInt theGraph -- Convert back into a readbale fomat
-    in
-        concatMap (printf ("%0" ++ show thirtySecond ++ "x")) results
-
-shaChunks s0Rot s1Rot s0RotW s1RotW hInit kInit theChunks =
-    let
         compressFunc = compressChunk (compressHStep s0Rot s1Rot) (createKWVector s0RotW s1RotW kInit)
     in
         foldl compressFunc hInit theChunks
