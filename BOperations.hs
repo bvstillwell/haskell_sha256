@@ -90,8 +90,39 @@ bSAdd a b c
         (O, a, b) -> (bSAnd a b, bSXor a b)
         (a, b, c) -> (bSAnd a b `bSXor` bSAnd b c `bSXor` bSAnd a c, foldl1 bSXor [a, b, c])
 
+
 bAddNoCarry :: [B] -> [B] -> [B]
-bAddNoCarry xs ys = reverse (bAddNoCarry' (reverse xs) (reverse ys) O)
-bAddNoCarry' [] _ _ = []
-bAddNoCarry' (x:xs) (y:ys) c1 = v : bAddNoCarry' xs ys c2
-    where (c2, v) = bSAdd c1 x y
+-- Add from left to right
+bAddNoCarry xs ys =
+    let
+        (_, vs) = bAddLeftToRight xs ys
+    in
+        vs
+bAddLeftToRight :: [B] -> [B] -> (B, [B])
+-- Add from left to right
+-- Result (carry, value)
+bAddLeftToRight [] _ = (O, [])
+bAddLeftToRight (x:xs) (y:ys) =
+    let
+        -- Get the previous add carry
+        (c', vs') = bAddLeftToRight xs ys
+        -- Add our current values
+        (c, v) = bSAdd x y c'
+    in
+        -- Return the result
+        (c, v:vs')
+
+-- bAddNoCarry xs ys = reverse (bAddNoCarry' (reverse xs) (reverse ys) O)
+-- bAddNoCarry' [] _ _ = []
+-- bAddNoCarry' (x:xs) (y:ys) c1 = v : bAddNoCarry' xs ys c2
+--     where (c2, v) = bSAdd c1 x y
+
+-- bSAddWithout :: B -> B -> B -> Bool
+-- bSAddWithout a b c
+--     | a > b = bSAddWithout b a c
+--     | b > c = bSAddWithout a c b
+--     | otherwise = case (a, b, c) of
+--         (O, _, _) -> False
+--         (X, _, _) -> False
+--         (V a, _, _) -> False
+--         _ -> True
