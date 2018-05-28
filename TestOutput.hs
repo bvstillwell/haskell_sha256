@@ -1,16 +1,26 @@
 import           BOperations
 import           Convert
 import           Data.List.Split
+import           Seed
 import           SHA
 import           SHAHelper
-import           Test.HUnit
 
--- p = chunksOf 4 [V a | a <- [1..(16*4)]]
+size = 32
+b = textToChunks "brad" size
+theChunks = [V 11, O, X, O] : tail (head b)
+-- theChunks = head b
+(s0Rot, s1Rot, s0RotW, s1RotW) = ((0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0))
 
-b = textToChunks "brad" 32
 
-c = [V n | n <- [0 .. 4]] : tail (head b)
 
-result = extendWStep (0, 0, 0) (0, 0, 0) c
+-- Infinite func bSAdd X X (Bx (V 1) (Bx (V 1) X))
+--
+--
+fourth = quot size 4
+eighth = quot size 8
 
--- result = shaChunks (0, 0, 0) (0, 0, 0) (0, 0, 0) (0, 0, 0) 32 p
+hInit = map (take eighth) hSeed -- Create the correct list size
+kInit = map (take eighth) (take fourth kSeed) -- Create the correct list size
+
+compressFunc = compressChunk (compressHStep s0Rot s1Rot) (createKWVector s0RotW s1RotW kInit)
+result = compressFunc hInit theChunks
