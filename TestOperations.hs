@@ -28,14 +28,29 @@ testsBXorTree = [
 
         Bx (V 1) (Bx (V 2) (Bx (V 3) (V 4))) ~=? bSXor (Bx (V 1) (V 2)) (Bx (V 3) (V 4)),
 
-        -- Bx (Bx (V 1) (V 2)) (Bx (V 3) (V 4)) ~=? bSXor (Bx (V 1) (V 2)) (Bx (V 4) (V 3)),
-        -- Bx (Bx (V 1) (V 2)) (Bx (V 3) (V 4)) ~=? bSXor (Bx (V 1) (V 3)) (Bx (V 4) (V 1)),
-        -- Bx (Bx (V 1) (V 2)) (Bx (V 3) (V 4)) ~=? bSXor (Bx (V 3) (V 2)) (Bx (V 4) (V 1)),
-        -- Bx (Bx (V 1) (V 2)) (Bx (V 3) (V 4)) ~=? bSXor (Bx (V 4) (V 3)) (Bx (V 2) (V 1)),
-
         Bx (V 4) (V 10) ~=? bSXor (Bx (V 10) (V 13)) (Bx (V 13) (V 4)),
         Bx (V 4) (V 13) ~=? bSXor (V 13) (V 4)
     ]
 
 
-results = runTestTT $ test $ testsBXorO ++ testsBXorTree
+testsBAndTree = [
+        Ba (V 1) (V 2) ~=? bSAnd (V 1) (V 2),
+        Ba (V 1) (V 2) ~=? bSAnd (V 2) (V 1),
+
+        O ~=? bSAnd O (Ba X (V 2)),
+        V 2 ~=? bSAnd X (V 2),
+        V 2 ~=? bSAnd (V 2) X,
+        V 2 ~=? bSAnd X (Ba X (V 2)),
+        V 2 ~=? bSAnd (Ba X (V 2)) X,
+        Ba X (V 2) ~=? bSAnd (Ba X (V 2)) (Ba X (V 2)),
+
+        Ba (V 1) (Ba (V 3) (V 4)) ~=? bSAnd (Ba (V 1) (V 3)) (Ba (V 3) (V 4)),
+        Ba (V 1) (Ba (V 3) (V 4)) ~=? bSAnd (Ba (V 3) (V 4)) (Ba (V 1) (V 3)),
+        Ba (V 1) (Ba (V 2) (Ba (V 3) (V 4))) ~=? bSAnd (Ba (V 1) (V 2)) (Ba (V 3) (V 4)),
+
+        Ba (V 4) (Ba (V 10) (V 13)) ~=? bSAnd (Ba (V 10) (V 13)) (Ba (V 13) (V 4)),
+        Ba (V 4) (V 13) ~=? bSAnd (V 13) (V 4)
+    ]
+
+
+results = runTestTT $ test $ testsBXorO ++ testsBXorTree ++ testsBAndTree

@@ -50,10 +50,16 @@ bSAnd a b
     | a > b = bSAnd b a
     | a == b = a
     | a == O = O
-    | a == X = b
-    | otherwise = case (a, b) of
-        (Ba a1 b1, Ba a2 b2) -> foldl1 bSAnd [a1, b1, a2, b2]
-        (a', b') -> Ba a' b'
+    | otherwise = bSAnd' a b
+bSAnd' (Ba a1 b1) (Ba a2 b2) = foldl1 bSAnd (sort [a1, b1, a2, b2])
+bSAnd' a (Ba b c)
+    | a == b = bSAnd b c
+    | b == c = bSAnd a b
+    | a > b = bSAnd b (Ba a c)
+    | b > c = bSAnd a (Ba c b)
+    | otherwise = Ba a (bSAnd b c)
+bSAnd' X b = b
+bSAnd' a b = Ba a b
 
 bX :: [B] -> B
 bX [] = O
