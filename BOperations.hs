@@ -65,18 +65,16 @@ bSXor a b
     | a > b = bSXor b a
     | a == O = b
     | a == b = O
-    | otherwise = case (a, b) of
-        -- At this stage a < b
-        (Bx a1 b1, Bx a2 b2) ->
-            let
-                l = [a1, b1, a2, b2]
-                s = sort l
-            in
-                if s == l then Bx a b else foldl1 bSXor s
-        (a, Bx a1 b1)
-            | a == a1 -> b1
-            | a == b1 -> a1
-        (a', b') -> Bx a' b'
+    | otherwise = bSXor' a b
+bSXor' (Bx a1 b1) (Bx a2 b2) = foldl1 bSXor (sort [a1, b1, a2, b2])
+bSXor' a (Bx b c)
+    | a == b = c
+    | b == c = a
+    | a > b = bSXor b (Bx a c)
+    | b > c = bSXor a (Bx c b)
+    | otherwise = Bx a (bSXor b c)
+bSXor' a b = Bx a b
+
 
 bSNot :: B -> B
 bSNot X = O
