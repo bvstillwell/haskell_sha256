@@ -7,7 +7,8 @@ import           SHAHelper
 
 size = 32
 b = textToChunks "brad" size
-theChunks = [V 11, O, X, O] : tail (head b)
+theChunks1 = [V 1, X, X, O] : tail (head b)
+theChunks2 = [V 1, V 2, X, O] : tail (head b)
 -- theChunks = head b
 (s0Rot, s1Rot, s0RotW, s1RotW) = ((0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0))
 
@@ -23,4 +24,5 @@ hInit = map (take eighth) hSeed -- Create the correct list size
 kInit = map (take eighth) (take fourth kSeed) -- Create the correct list size
 
 compressFunc = compressChunk (compressHStep s0Rot s1Rot) (createKWVector s0RotW s1RotW kInit)
-result = compressFunc hInit theChunks
+result1 = compressFunc hInit theChunks1
+result2 = compressFunc hInit theChunks2

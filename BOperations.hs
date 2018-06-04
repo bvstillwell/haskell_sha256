@@ -5,7 +5,7 @@ import           Data.List
 import           Debug.Trace
 import           Text.Printf
 
-data B = O | X | V Int | Ba B B | Bx B B | BAdd B B deriving (Eq, Ord)
+data B = O | X | V Int | Bx B B | Ba B B | BAdd B B deriving (Eq, Ord)
 
 instance Show B where
     -- show X  = "x"
@@ -19,7 +19,7 @@ instance Show B where
     show (V x)  = printf "(V %d)" x
     -- show (BAdd a b) = "(" ++ show a ++ "+" ++ show b ++ ")"
     show (Bx a b) = "(Bx " ++ show a ++ " " ++ show b ++ ")"
-    show (Ba a b) = "(Ba " ++ show a ++ "&" ++ show b ++ ")"
+    show (Ba a b) = "(Ba " ++ show a ++ " " ++ show b ++ ")"
 
 bShL :: Int -> [B] -> [B]
 bShL 0 a = a
@@ -47,39 +47,59 @@ bRotL (x:xs) a = bRotL (xs ++ [x]) (a-1)
 bSAnd :: B -> B -> B
 bSAnd a b
     -- | trace ("(bSAnd " ++ show a ++ " " ++ show b ++ ")") False = undefined
-    | a > b = bSAnd b a
-    | a == b = a
-    | a == O = O
+    | a > b = bSAnd b a  -- Get the correct order
+    | a == b = a  -- Ignore duplicates
+    | a == O = O  -- O finishes it
+    | a == X = b  -- X ignored
     | otherwise = bSAnd' a b
-bSAnd' (Ba a1 b1) (Ba a2 b2) = foldl1 bSAnd (sort [a1, b1, a2, b2])
+bSAnd' (Ba a1 b1) (Ba a2 b2) = foldr1 bSAnd (sort [a1, b1, a2, b2])
+bSAnd' (Ba _ _) _ = error "Not supposed to have this"
 bSAnd' a (Ba b c)
-    | a == b = bSAnd b c
-    | b == c = bSAnd a b
-    | a > b = bSAnd b (Ba a c)
-    | b > c = bSAnd a (Ba c b)
-    | otherwise = Ba a (bSAnd b c)
-bSAnd' X b = b
+    | a == b = Ba b c
+    | a == c = Ba b c
+    | b >= c = error $ "Incorrect order in Ba" ++ show a ++ "(Ba " ++ show b ++ " " ++ show c ++ ")"
+    | b == X = error "X in Ba"
+    | b == O = error "O in Ba"
+    | a > b = bSAnd b (bSAnd a c)
+    | a > c = bSAnd b (bSAnd c a)
+    | otherwise = Ba a (Ba b c) -- All in order
+bSAnd' a (Bx X b) -- Special cancel a & !a = O
+    | a == b = O
+    | otherwise = Bx a (Bx X b)
+bSAnd' X a = error "Unexpected X"
 bSAnd' a b = Ba a b
+
+bSXor :: B -> B -> B
+bSXor a b
+    | trace ("(bSXor " ++    show a ++ " " ++ show b ++ ")") False = undefined
+    | a > b = bSXor b a -- Get the correct order
+    | a == O = b  -- Xor ignore
+    | a == b = O  -- Xor kill
+    | otherwise = bSXor' a b
+bSXor' (Bx a1 b1) (Bx a2 b2) = foldr1 bSXor (sort [a1, b1, a2, b2]) -- Not allowed structure!
+bSXor' a (Bx b c) -- Kill some values, then redorder correctly (Assumed b < c)
+    | a == b = c  -- Xor kill
+    | a == c = b  -- Xor kill
+    | b >= c = error $ "Incorrect order in bSXor " ++ show a ++ " (Bx " ++ show b ++ " " ++ show c ++ ")"
+    -- Get the ordering. Assumed b < c and cancelations have been done
+    | a > b = bSXor b (bSXor a c) -- Change the order. Right could return O
+    | a > c = bSXor b (bSXor c a) -- Change the order. Right might return O
+    | otherwise = bSXor1' a (Bx b c)  -- Order is OK!
+bSXor' (Bx a b) c = bSXor' c (Bx a b) -- Let's use our other func to order
+bSXor' a b = bSXor1' a b
+
+bSXor1' X (V a) = Bx X (V a)
+bSXor1' X (Bx a b) = Bx X (Bx a b)
+bSXor1' (V a) (V b) = Bx (V a) (V b)
+bSXor1' (Ba a1 b1) (Ba a2 b2) = Bx (Ba a1 b1) (Ba a2 b2)
+bSXor1' a (Ba a2 b2) = Bx a (Ba a2 b2)
+-- bSXor' a b = Bx a b  -- We're happy with what they sent in
+
 
 bX :: [B] -> B
 bX [] = O
 bX [a] = a
-
-bSXor :: B -> B -> B
-bSXor a b
-    -- | trace ("(bSXor " ++ show a ++ " " ++ show b ++ ")") False = undefined
-    | a > b = bSXor b a
-    | a == O = b
-    | a == b = O
-    | otherwise = bSXor' a b
-bSXor' (Bx a1 b1) (Bx a2 b2) = foldl1 bSXor (sort [a1, b1, a2, b2])
-bSXor' a (Bx b c)
-    | a == b = c
-    | b == c = a
-    | a > b = bSXor b (Bx a c)
-    | b > c = bSXor a (Bx c b)
-    | otherwise = Bx a (bSXor b c)
-bSXor' a b = Bx a b
+-- bSXor (Bx X (V 1)) (Ba (V 1) (V 2))
 
 
 bSNot :: B -> B
