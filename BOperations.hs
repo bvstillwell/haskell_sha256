@@ -5,26 +5,24 @@ import           Data.List
 import           Debug.Trace
 import           Text.Printf
 
-data B = O | X | V Int | Bx B B | Ba B B | BAdd B B deriving (Eq, Ord)
+data N = I | N deriving (Eq, Ord, Show) -- Normal, Inverted
+data B = O | X | V Int N | Bx B B | Ba B B deriving (Eq, Ord, Show)
 
-instance Show B where
-    -- show X  = "x"
-    -- show O  = "o"
-    -- show (V x)  = printf "%02d" x
-    -- show (BAdd a b) = "(" ++ show a ++ "+" ++ show b ++ ")"
-    -- show (Bx a b) = "(" ++ show a ++ "^" ++ show b ++ ")"
-    -- show (Ba a b) = "(" ++ show a ++ "&" ++ show b ++ ")"
-    show X  = "X"
-    show O  = "O"
-    show (V x)  = printf "(V %d)" x
-    -- show (BAdd a b) = "(" ++ show a ++ "+" ++ show b ++ ")"
-    show (Bx a b) = "(Bx " ++ show a ++ " " ++ show b ++ ")"
-    show (Ba a b) = "(Ba " ++ show a ++ " " ++ show b ++ ")"
+-- instance Show B where
+--     show X  = "X"
+--     show O  = "O"
+--     show (V x a)  = printf "(V %d %s)" x a
+--     show (Bx a b) = "(Bx " ++ show a ++ " " ++ show b ++ ")"
+--     show (NBx a b) = "(NBx " ++ show a ++ " " ++ show b ++ ")"
+--     show (Ba a b) = "(Ba " ++ show a ++ " " ++ show b ++ ")"
+--     show (NBa a b) = "(NBa " ++ show a ++ " " ++ show b ++ ")"
+
+nInv N = I
+nInv I = N
 
 bShL :: Int -> [B] -> [B]
 bShL 0 a = a
 bShL a xs = bShL (a-1) xs ++ [O]
-
 
 bShR :: Int -> [B] -> [B]
 bShR 0 a = a
@@ -43,69 +41,142 @@ bRotL :: [B] -> Integer -> [B]
 bRotL a 0 = a
 bRotL (x:xs) a = bRotL (xs ++ [x]) (a-1)
 
-
+-- Create an and tree
 bSAnd :: B -> B -> B
 bSAnd a b
-    -- | trace ("(bSAnd " ++ show a ++ " " ++ show b ++ ")") False = undefined
+    -- | trace ("(bSAnd (" ++ show a ++ ") (" ++ show b ++ "))") False = undefined
     | a > b = bSAnd b a  -- Get the correct order
     | a == b = a  -- Ignore duplicates
     | a == O = O  -- O finishes it
     | a == X = b  -- X ignored
     | otherwise = bSAnd' a b
-bSAnd' (Ba a1 b1) (Ba a2 b2) = foldr1 bSAnd (sort [a1, b1, a2, b2])
-bSAnd' (Ba _ _) _ = error "Not supposed to have this"
-bSAnd' a (Ba b c)
-    | a == b = Ba b c
-    | a == c = Ba b c
-    | b >= c = error $ "Incorrect order in Ba" ++ show a ++ "(Ba " ++ show b ++ " " ++ show c ++ ")"
-    | b == X = error "X in Ba"
-    | b == O = error "O in Ba"
-    | a > b = bSAnd b (bSAnd a c)
-    | a > c = bSAnd b (bSAnd c a)
-    | otherwise = Ba a (Ba b c) -- All in order
-bSAnd' a (Bx X b) -- Special cancel a & !a = O
-    | a == b = O
-    | otherwise = Bx a (Bx X b)
-bSAnd' X a = error "Unexpected X"
-bSAnd' a b = Ba a b
+-- Dealt with
+-- O *
+-- X *
+bSAnd' (V a1 s1) (V a2 s2)
+    | a1 == a2 = O -- Invert && Not invert = O. Inferred as a == b is canceled in the first part
+    | otherwise = Ba (V a1 s1) (V a2 s2)
+-- V V
+bSAnd' (V a1 s1) (Ba (V a2 s2) c)
+    | V a1 s1 == V a2 s2 = Ba (V a2 s2) c -- Ignore it
+    | V a1 s1 == c = Ba (V a2 s2) c -- Ignore it
+    | a1 == a2 && s1 == nInv s2 = O -- And a1 a2 kill!
+    -- Standard graph manipulation
+    | a1 < a2 = Ba (V a1 s1) (Ba (V a2 s2) c) -- We've found our place. Add to list
+    | otherwise = -- Recurse to the next location in list. a1 > a2
+        let
+            result = bSAnd (V a1 s1) c -- Calculate the result from up the tree
+            unchanged = Ba (V a1 s1) c
+        in
+            if result == unchanged -- Does it require a recalc?
+            then Ba (V a2 s2) unchanged -- No it was as expected
+            else bSAnd (V a2 s2) result -- Yes, this might influence backwards
+bSAnd' (Bx (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
+    -- (a and b) xor (c and d)
+    -- bSAnd (Bx (V 1 N) (V 2 N)) (Ba (V 1 N) (V 2 I))
+    | a == c && b == bSNot d = bSAnd a (bSNot b)
 
+    -- bSAnd (Bx (V 1 N) (V 2 N)) (Ba (V 1 I) (V 2 I))
+    | a == bSNot c && b == bSNot d = O
+
+    | otherwise = bSAndError' (Bx (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
+    where
+        a = V a1 s1
+        b = V a2 s2
+        c = V a3 s3
+        d = V a4 s4
+-- V BaV
+-- Create the from the 4 values
+bSAnd' (Ba a1 b1) (Ba a2 b2) =  foldr1 bSAnd (sort [a1, b1, a2, b2])
+bSAnd' a b = bSAndError' a b
+bSAndError' a b = error $ "Undefined bSAnd (" ++ show a ++ ") (" ++ show b ++ ")"
+
+
+
+
+-- Create an and tree
 bSXor :: B -> B -> B
 bSXor a b
-    | trace ("(bSXor " ++    show a ++ " " ++ show b ++ ")") False = undefined
-    | a > b = bSXor b a -- Get the correct order
-    | a == O = b  -- Xor ignore
-    | a == b = O  -- Xor kill
+    -- | trace ("(bSXor (" ++ show a ++ ") (" ++ show b ++ "))") False = undefined
+    | a > b = bSXor b a  -- Get the correct order
+    | a == b = O  -- Dupliates Cancel
+    | a == O = b  -- O Ignore
+    | a == X = bSNot b  -- X is invert
     | otherwise = bSXor' a b
-bSXor' (Bx a1 b1) (Bx a2 b2) = foldr1 bSXor (sort [a1, b1, a2, b2]) -- Not allowed structure!
-bSXor' a (Bx b c) -- Kill some values, then redorder correctly (Assumed b < c)
-    | a == b = c  -- Xor kill
-    | a == c = b  -- Xor kill
-    | b >= c = error $ "Incorrect order in bSXor " ++ show a ++ " (Bx " ++ show b ++ " " ++ show c ++ ")"
-    -- Get the ordering. Assumed b < c and cancelations have been done
-    | a > b = bSXor b (bSXor a c) -- Change the order. Right could return O
-    | a > c = bSXor b (bSXor c a) -- Change the order. Right might return O
-    | otherwise = bSXor1' a (Bx b c)  -- Order is OK!
-bSXor' (Bx a b) c = bSXor' c (Bx a b) -- Let's use our other func to order
-bSXor' a b = bSXor1' a b
+-- Dealt with
+-- O *
+-- X *
+bSXor' (V a1 s1) (V a2 s2)
+    | a1 == a2 = X -- Invert && Not invert = x. Inferred as a == b is canceled in the first part
+    | otherwise = Bx (V a1 s1) (V a2 s2)
+-- V V
+bSXor' (V a1 s1) (Bx (V a2 s2) c)
+    | V a1 s1 == V a2 s2 = c -- Kill first
+    | V a1 s1 == c = V a2 s2 -- Kill second
+    | a1 == a2 && s1 == nInv s2 = X -- Return an inverse
+    -- Standard graph manipulation
+    | a1 < a2 = Bx (V a1 s1) (Bx (V a2 s2) c) -- We've found our place. Add to list
+    | otherwise = -- Recurse to the next location in list. a1 > a2
+        let
+            result = bSXor (V a1 s1) c -- Calculate the result from up the tree
+            unchanged = Bx (V a1 s1) c
+        in
+            if result == unchanged -- Does it require a recalc?
+            then Bx (V a2 s2) unchanged -- No it was as expected
+            else bSXor (V a2 s2) result -- Yes, this might influence backwards
 
-bSXor1' X (V a) = Bx X (V a)
-bSXor1' X (Bx a b) = Bx X (Bx a b)
-bSXor1' (V a) (V b) = Bx (V a) (V b)
-bSXor1' (Ba a1 b1) (Ba a2 b2) = Bx (Ba a1 b1) (Ba a2 b2)
-bSXor1' a (Ba a2 b2) = Bx a (Ba a2 b2)
--- bSXor' a b = Bx a b  -- We're happy with what they sent in
+bSXor' (V a1 s1) (Ba (V a2 s2) (V a3 s3))
+    | a == b = bSAnd b (bSNot c) -- a xor (a and b) = a and !b
+    | a == c = bSAnd c (bSNot b)
+    | a == bSNot b = bSNot (bSAnd a c) -- a xor (a and !b) = ! (a and b)
+    | a == bSNot c = bSNot (bSAnd a b)
+    | otherwise = bSXorError' a (Ba b c)
+    where
+        a = V a1 s1
+        b = V a2 s2
+        c = V a3 s3
+bSXor' (Ba (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
+    -- (a and b) xor (c and d)
+    -- => a == c && b == !d = a
+    | a == c && b == bSNot d = a
+    | a == d && b == bSNot c = a
+    | b == c && a == bSNot d = b
+    | b == d && a == bSNot c = b
+    | otherwise = bSXorError' (Ba a b) (Ba c d)
+    where
+        a = V a1 s1
+        b = V a2 s2
+        c = V a3 s3
+        d = V a4 s4
+bSXor' (Bx (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
+    -- (a xor b) xor (c and d)
+    -- bSXor (Bx (V 1 I) (V 2 I)) (Ba (V 1 N) (V 2 I))
+    | a == bSNot c && b == d = bSAnd a (bSNot b)
+    | otherwise = bSXorError' (Ba a b) (Ba c d)
+    where
+        a = V a1 s1
+        b = V a2 s2
+        c = V a3 s3
+        d = V a4 s4
 
+-- V BaV
+-- Create the from the 4 values
+bSXor' (Bx a1 b1) (Bx a2 b2) =  foldr1 bSXor (sort [a1, b1, a2, b2])
+bSXor' a b = bSXorError' a b
+bSXorError' a b = error $ "Undefined bSXor (" ++ show a ++ ") (" ++ show b ++ ")"
 
-bX :: [B] -> B
-bX [] = O
-bX [a] = a
--- bSXor (Bx X (V 1)) (Ba (V 1) (V 2))
 
 
 bSNot :: B -> B
-bSNot X = O
-bSNot O = X
-bSNot a = bSXor X a
+bSNot a
+    -- | trace ("(bSNot (" ++ show a ++ ")") False = undefined
+    | otherwise = bSNot' a
+bSNot' X = O
+bSNot' O = X
+bSNot' (V a n) = V a (nInv n)
+bSNot' (Bx a b) = Bx (bSNot a) (bSNot b)
+bSNot' (Ba a b) = Ba (bSNot a) (bSNot b)
+
 
 bSor :: B -> B -> B
 bSor a b

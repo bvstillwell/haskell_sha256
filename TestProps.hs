@@ -12,13 +12,13 @@ instance Arbitrary B where
         n <- choose (0, 3) :: Gen Int
         -- s <- choose (0, 5) :: Gen Int
         -- a <- arbitrary
-        -- b <- arbitrary
+        s <- choose (0, 1) :: Gen Int
         case r of n
                     | n == 1 -> return O
                     | n == 2 -> return X
                     -- | n == 3 -> return (Ba a b)
                     -- | n == 4 -> return (Bx a b)
-                    | otherwise -> return (V r)
+                    | otherwise -> return (V r (if s == 0 then N else I))
 
 
 bRand = generate arbitrary :: IO B --Create a random B
@@ -42,6 +42,6 @@ prop_bANop a = fbReverseEq bSAnd X a a
 -- prop_bNot = fbThrice bSNot
 --------------------------
 return []
-runTests :: IO Bool
-runTests = $forAllProperties $
+result :: IO Bool
+result = $forAllProperties $
   quickCheckWithResult (stdArgs {maxSuccess = 1000})
