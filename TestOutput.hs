@@ -5,28 +5,22 @@ import           Seed
 import           SHA
 import           SHAHelper
 
-size = 32
-b = textToChunks "brad" size
--- theChunks1 = [V 1 N, X, X, O] : tail (head b)
--- theChunks2 = [V 1 N, V 2 N, X, O] : tail (head b)
--- theChunks3 = [V 1 N, V 2 N, V 3 N, O] : tail (head b)
--- theChunks3 = [V 1 N, V 2 N, V 3 N, V 4 N] : tail (head b)
--- theChunks = head b
-(s0Rot, s1Rot, s0RotW, s1RotW) = ((0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0))
+result count size =
+    let
+        b = textToChunks "brad" size
+        (s0Rot, s1Rot, s0RotW, s1RotW) = ((0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0))
 
+        m1 = replicate (eighth - count) O
+        m2 = [V a N | a <- [1..count]] ++ m1
 
+        fourth = quot size 4
+        eighth = quot size 8
 
--- Infinite func bSAdd X X (Bx (V 1 N) (Bx (V 1 N) X))
---
---
-fourth = quot size 4
-eighth = quot size 8
+        hInit = map (take eighth) hSeed -- Create the correct list size
+        kInit = map (take eighth) (take fourth kSeed) -- Create the correct list size
 
-hInit = map (take eighth) hSeed -- Create the correct list size
-kInit = map (take eighth) (take fourth kSeed) -- Create the correct list size
+        compressFunc = compressChunk (compressHStep s0Rot s1Rot) (createKWVector s0RotW s1RotW kInit)
+    in compressFunc hInit $ m2 : tail (head b)
 
-compressFunc = compressChunk (compressHStep s0Rot s1Rot) (createKWVector s0RotW s1RotW kInit)
-result1 = compressFunc hInit $ [V 1 N, X, X, O] : tail (head b)
-result2 = compressFunc hInit $ [V 1 N, V 2 N, X, O] : tail (head b)
-result3 = compressFunc hInit $ [V 1 N, V 2 N, V 3 N, O] : tail (head b)
-result4 = compressFunc hInit $ [V 1 N, V 2 N, V 3 N, V 4 N] : tail (head b)
+result1 = result 1 32
+result256 = result 2 256
