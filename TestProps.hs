@@ -4,21 +4,24 @@ import           Convert
 import           Debug.Trace
 import           SHAHelper
 import           Test.QuickCheck
+import           Test.QuickCheck.Gen
 
 -- This class creates random B. Try it out with bRand
 instance Arbitrary B where
-    arbitrary = do
-        r <- choose (1, 10) :: Gen Int
-        n <- choose (0, 3) :: Gen Int
-        -- s <- choose (0, 5) :: Gen Int
-        -- a <- arbitrary
-        s <- choose (0, 1) :: Gen Int
-        case r of n
+    arbitrary =
+        do
+        n <- choose (1, 5) :: Gen Int
+        r1 <- choose (1, 3) :: Gen Int
+        r2 <- choose (1, 3) :: Gen Int
+        s1 <- elements [N, I]
+        s2 <- elements [N, I]
+        case n of n
                     | n == 1 -> return O
                     | n == 2 -> return X
-                    -- | n == 3 -> return (Ba a b)
-                    -- | n == 4 -> return (Bx a b)
-                    | otherwise -> return (V r (if s == 0 then N else I))
+                    | n == 3 -> return (V r1 s1)
+                    | n == 4 -> return (bSXor (V r1 s1) (V r2 s2))
+                    | n == 5 -> return (bSAnd (V r1 s1) (V r2 s2))
+                    -- | otherwise -> return (V r s)
 
 
 bRand = generate arbitrary :: IO B --Create a random B
@@ -36,6 +39,7 @@ prop_bXClear a = bSXor a a == O
 prop_bAReverse = fbReverse bSAnd
 prop_bAClear a = fbReverseEq bSAnd O a O
 prop_bANop a = fbReverseEq bSAnd X a a
+
 
 -- prop_bAddReverse1 a b c = bSAdd a b c == bSAdd b a c
 

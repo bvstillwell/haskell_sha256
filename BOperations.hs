@@ -6,7 +6,7 @@ import           Debug.Trace
 import           Text.Printf
 
 data N = I | N deriving (Eq, Ord, Show) -- Normal, Inverted
-data B = O | X | V Int N | Bx B B | Ba B B deriving (Eq, Ord, Show)
+data B = O | X | V Int N | Ba B B | Bx B B deriving (Eq, Ord, Show)
 
 -- instance Show B where
 --     show X  = "X"
@@ -40,130 +40,6 @@ bRotR a xs = bRotR (a-1) (last xs : init xs)
 bRotL :: [B] -> Integer -> [B]
 bRotL a 0 = a
 bRotL (x:xs) a = bRotL (xs ++ [x]) (a-1)
-
--- Create an and tree
-bSAnd :: B -> B -> B
-bSAnd a b
-    -- | trace ("(bSAnd (" ++ show a ++ ") (" ++ show b ++ "))") False = undefined
-    | a > b = bSAnd b a  -- Get the correct order
-    | a == b = a  -- Ignore duplicates
-    | a == O = O  -- O finishes it
-    | a == X = b  -- X ignored
-    | otherwise = bSAnd' a b
--- Dealt with
--- O *
--- X *
-bSAnd' (V a1 s1) (V a2 s2)
-    | a1 == a2 = O -- Invert && Not invert = O. Inferred as a == b is canceled in the first part
-    | otherwise = Ba (V a1 s1) (V a2 s2)
--- V V
-bSAnd' (V a1 s1) (Ba (V a2 s2) c)
-    | V a1 s1 == V a2 s2 = Ba (V a2 s2) c -- Ignore it
-    | V a1 s1 == c = Ba (V a2 s2) c -- Ignore it
-    | a1 == a2 && s1 == nInv s2 = O -- And a1 a2 kill!
-    -- Standard graph manipulation
-    | a1 < a2 = Ba (V a1 s1) (Ba (V a2 s2) c) -- We've found our place. Add to list
-    | otherwise = -- Recurse to the next location in list. a1 > a2
-        let
-            result = bSAnd (V a1 s1) c -- Calculate the result from up the tree
-            unchanged = Ba (V a1 s1) c
-        in
-            if result == unchanged -- Does it require a recalc?
-            then Ba (V a2 s2) unchanged -- No it was as expected
-            else bSAnd (V a2 s2) result -- Yes, this might influence backwards
-bSAnd' (Bx (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
-    -- (a and b) xor (c and d)
-    -- bSAnd (Bx (V 1 N) (V 2 N)) (Ba (V 1 N) (V 2 I))
-    | a == c && b == bSNot d = bSAnd a (bSNot b)
-
-    -- bSAnd (Bx (V 1 N) (V 2 N)) (Ba (V 1 I) (V 2 I))
-    | a == bSNot c && b == bSNot d = O
-
-    | otherwise = bSAndError' (Bx (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
-    where
-        a = V a1 s1
-        b = V a2 s2
-        c = V a3 s3
-        d = V a4 s4
--- V BaV
--- Create the from the 4 values
-bSAnd' (Ba a1 b1) (Ba a2 b2) =  foldr1 bSAnd (sort [a1, b1, a2, b2])
-bSAnd' a b = bSAndError' a b
-bSAndError' a b = error $ "Undefined bSAnd (" ++ show a ++ ") (" ++ show b ++ ")"
-
-
-
-
--- Create an and tree
-bSXor :: B -> B -> B
-bSXor a b
-    -- | trace ("(bSXor (" ++ show a ++ ") (" ++ show b ++ "))") False = undefined
-    | a > b = bSXor b a  -- Get the correct order
-    | a == b = O  -- Dupliates Cancel
-    | a == O = b  -- O Ignore
-    | a == X = bSNot b  -- X is invert
-    | otherwise = bSXor' a b
--- Dealt with
--- O *
--- X *
-bSXor' (V a1 s1) (V a2 s2)
-    | a1 == a2 = X -- Invert && Not invert = x. Inferred as a == b is canceled in the first part
-    | otherwise = Bx (V a1 s1) (V a2 s2)
--- V V
-bSXor' (V a1 s1) (Bx (V a2 s2) c)
-    | V a1 s1 == V a2 s2 = c -- Kill first
-    | V a1 s1 == c = V a2 s2 -- Kill second
-    | a1 == a2 && s1 == nInv s2 = X -- Return an inverse
-    -- Standard graph manipulation
-    | a1 < a2 = Bx (V a1 s1) (Bx (V a2 s2) c) -- We've found our place. Add to list
-    | otherwise = -- Recurse to the next location in list. a1 > a2
-        let
-            result = bSXor (V a1 s1) c -- Calculate the result from up the tree
-            unchanged = Bx (V a1 s1) c
-        in
-            if result == unchanged -- Does it require a recalc?
-            then Bx (V a2 s2) unchanged -- No it was as expected
-            else bSXor (V a2 s2) result -- Yes, this might influence backwards
-
-bSXor' (V a1 s1) (Ba (V a2 s2) (V a3 s3))
-    | a == b = bSAnd b (bSNot c) -- a xor (a and b) = a and !b
-    | a == c = bSAnd c (bSNot b)
-    | a == bSNot b = bSNot (bSAnd a c) -- a xor (a and !b) = ! (a and b)
-    | a == bSNot c = bSNot (bSAnd a b)
-    | otherwise = bSXorError' a (Ba b c)
-    where
-        a = V a1 s1
-        b = V a2 s2
-        c = V a3 s3
-bSXor' (Ba (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
-    -- (a and b) xor (c and d)
-    -- => a == c && b == !d = a
-    | a == c && b == bSNot d = a
-    | a == d && b == bSNot c = a
-    | b == c && a == bSNot d = b
-    | b == d && a == bSNot c = b
-    | otherwise = bSXorError' (Ba a b) (Ba c d)
-    where
-        a = V a1 s1
-        b = V a2 s2
-        c = V a3 s3
-        d = V a4 s4
-bSXor' (Bx (V a1 s1) (V a2 s2)) (Ba (V a3 s3) (V a4 s4))
-    -- (a xor b) xor (c and d)
-    -- bSXor (Bx (V 1 I) (V 2 I)) (Ba (V 1 N) (V 2 I))
-    | a == bSNot c && b == d = bSAnd a (bSNot b)
-    | otherwise = bSXorError' (Ba a b) (Ba c d)
-    where
-        a = V a1 s1
-        b = V a2 s2
-        c = V a3 s3
-        d = V a4 s4
-
--- V BaV
--- Create the from the 4 values
-bSXor' (Bx a1 b1) (Bx a2 b2) =  foldr1 bSXor (sort [a1, b1, a2, b2])
-bSXor' a b = bSXorError' a b
-bSXorError' a b = error $ "Undefined bSXor (" ++ show a ++ ") (" ++ show b ++ ")"
 
 
 
@@ -215,31 +91,208 @@ bAddLeftToRight (x:xs) (y:ys) =
         -- Return the result
         (c, v:vs')
 
-bSCarry2' :: [B] -> [B] -> (B, Maybe [B])
--- Return the carry, and the underlying values if calculated
--- Will recursively stop when trying to add O O
-bSCarry2' [x] [y] = let (c, v) = bSAdd x y O in (c, Just [v])
-bSCarry2' (O:xs) (O:ys) = (O, Nothing) -- We don't need to recurse
-bSCarry2' (x:xs) (y:ys) =
+-- Create an and tree
+bSAnd :: B -> B -> B
+bSAnd a b
+    -- | trace ("(bSAnd (" ++ show a ++ ") (" ++ show b ++ "))") False = undefined
+    | a > b = bSAnd b a  -- Get the correct order
+    | a == b = a  -- Ignore duplicates
+    | a == O = O  -- O finishes it
+    | a == X = b  -- X ignored
+    | a == bSNot b = O  -- X ignored
+    | otherwise = bSAnd' a b
+-- O *
+-- X *
+-- V V
+bSAnd' (V a1 s1) (V a2 s2) = Ba (V a1 s1) (V a2 s2)
+-- V Ba
+bSAnd' (V a1 s1) (Ba b c) =
     let
-        (c', vs') = bSCarry2' xs ys
-        (c, v) = bSAdd x y c'
+        a = V a1 s1
+        r = bSTestNode3 a b c
+    in case r of
+        EQUALAB -> Ba b c
+        EQUALAC -> Ba b c
+        OK -> Ba a (Ba b c)
+        INVERSEAB -> O
+        INVERSEAC -> O
+        REORDER -> bSRecurseAndEval a b c bSAnd Ba
+-- Ba Ba (Illegal structure rebuild)
+bSAnd' (Ba a1 b1) (Ba a2 b2) =  foldr1 bSAnd (sort [a1, b1, a2, b2])
+-- V Bx
+bSAnd' a (Bx b c) = bSXor (bSAnd a b) (bSAnd a c)
+
+bSAnd' a b = bSAndError' a b ""
+bSAndError' a b c = error $ "Undefined\n  bSAnd \n    (" ++ show a ++ ")\n    (" ++ show b ++ ")" ++ show c
+
+
+
+
+
+
+
+-- Create an and tree
+bSXor :: B -> B -> B
+bSXor a b
+    -- | trace ("(bSXor (" ++ show a ++ ") (" ++ show b ++ "))") False = undefined
+    | a > b = bSXor b a  -- Get the correct order
+    | a == b = O  -- Dupliates Cancel
+    | a == O = b  -- O Ignore
+    | a == X = bSNot b  -- X is invert
+    | a == bSNot b = X  -- Xor cancelation (a ^ (X ^ a) -> a ^ a ^ x -> X)
+    | otherwise = bSXor' a b
+-- Dealt with
+-- O *
+-- X *
+-- V V
+bSXor' (V a1 s1) (V a2 s2) = Bx (V a1 s1) (V a2 s2)
+
+-- V Ba
+bSXor' (V a1 s1) (Ba b c) =
+    let
+        a = V a1 s1
+        r = bSTestNode3 a b c
+    in case r of
+        EQUALAB -> Bx a (Ba b c)
+        -- EQUALAC -> Bx a (Ba b c)
+        INVERSEAB -> bSXor a (bSXor c (bSAnd a c))
+        -- INVERSEAC -> bSXor a (bSXor b (bSAnd a b))
+        OK -> Bx a (Ba b c)
+        REORDER -> bSRecurseAndEval a b c bSXor Bx
+        _ -> bSXorError' (V a1 s1) (Ba b c) (show r)
+
+-- V Bx
+bSXor' (V a1 s1) (Bx b c) =
+    let
+        a = V a1 s1
+        r = bSTestNode3 a b c
+    in case r of
+        EQUALAB -> c -- Xor cancel
+        -- EQUALAC -> b -- Xor cancel
+        INVERSEAB -> bSNot c
+        -- INVERSEAC -> bSNot b
+        OK -> Bx a (Bx b c)
+        REORDER -> bSRecurseAndEval a b c bSXor Bx
+        _ -> bSXorError' (V a1 s1) (Bx b c) (show r)
+
+-- Bx Bx (Illegal structure)
+bSXor' (Bx a1 b1) (Bx a2 b2) =  foldr1 bSXor (sort [a1, b1, a2, b2])
+
+-- Ba Ba
+bSXor' (Ba a1 b1) (Ba a2 b2) =
+    let
+        a = Ba a1 b1
+        b = Ba a2 b2
+        rab = bSTestNodes a b
+    in case rab of
+        -- EQUALAB -> O
+        -- INVERSEAB -> X
+        OK -> Bx a b
+        -- _  -> bSXorError' a b (show rab)
+
+-- Bx Ba
+bSXor' (Ba a1 b1) (Bx b c) =
+    let
+        a = Ba a1 b1
+        rab = bSTestNodes a b
+        rac = bSTestNodes a c
+    in case (rab, rac) of
+        (EQUALAB, _) -> b
+        (_, EQUALAB) -> a
+        (INVERSEAB, _) -> bSNot c
+        (_, INVERSEAB) -> bSNot b
+        (OK, OK) -> Bx a (Bx b c)
+        (REORDER, _) -> foldr1 bSXor $ sort [a, b, c]
+        (_, REORDER) -> foldr1 bSXor $ sort [a, b, c]
+        (_, _) -> bSXorError' (Ba a1 b1) (Bx b c) (show (rab, rac))
+
+-- -- Bx Ba
+-- bSXor' (Bx a b) (Ba a1 b1) =
+--     let
+--         c = Ba a1 b1
+--         rac = bSTestNodes a c
+--         rbc = bSTestNodes b c
+--     in case (rac, rbc) of
+--         -- (EQUALAB, _) -> b
+--         -- (_, EQUALAB) -> a
+--         -- (INVERSEAB, _) -> bSNot b
+--         (_, INVERSEAB) -> bSNot a
+--         (OK, OK) -> Bx a (Bx b c)
+--         (_, _) -> bSXorError' (Bx a b) c (show (rac, rbc))
+
+bSXor' a b = bSXorError' a b ""
+bSXorError' a b c = error $ "Undefined\n  bSXor \n    (" ++ show a ++ ")\n    (" ++ show b ++ ")" ++ c
+
+
+
+
+
+
+
+
+data NodeTestResult =
+    EQUALAB
+    | EQUALAC
+    | EQUALAD
+    | EQUALBC
+    | EQUALBD
+    | INVERSEAB
+    | INVERSEAC
+    | INVERSEAD
+    | INVERSEBC
+    | INVERSEBD
+    | REORDER  -- a reorder is required
+    | OK deriving (Eq, Show)
+
+bSTestNodes :: B -> B -> NodeTestResult
+bSTestNodes a b = bSTestNodes' (compare a b) (compare (bSNot a) b)
+bSTestNodes' _  EQ = INVERSEAB
+bSTestNodes' LT _  = OK
+bSTestNodes' EQ _  = EQUALAB
+bSTestNodes' _  _  = REORDER
+
+bSTestNode3 :: B -> B -> B -> NodeTestResult
+bSTestNode3 a b c =
+    let
+        n2 = bSTestNodes a b
+        ac = compare a c
+        bc = compare b c
+        ai = bSNot a
+        bi = bSNot b
+        aic = compare ai c
+        bic = compare bi c
+    in if n2 /= OK then n2 else bSTestNode3' ac bc aic bic
+bSTestNode3' _  _  EQ _  = INVERSEAC
+bSTestNode3' _  _  _  EQ = INVERSEBC
+bSTestNode3' LT _  _  _  = OK
+bSTestNode3' EQ _  _  _  = EQUALAC
+bSTestNode3' _  EQ _  _  = EQUALBC
+bSTestNode3' _  _  _  _  = REORDER
+
+bSTestNode4 :: B -> B -> B -> B -> NodeTestResult
+bSTestNode4 a b c d =
+    let
+        n3 = bSTestNode3 a b c
+        ad = compare a d
+        bd = compare b d
+        ai = bSNot a
+        bi = bSNot b
+        aid = compare ai d
+        bid = compare bi d
+    in if n3 /= OK then n3 else bSTestNode4' ad bd aid bid
+bSTestNode4' _  _  EQ _  = INVERSEAD
+bSTestNode4' _  _  _  EQ = INVERSEBD
+bSTestNode4' LT LT _  _  = OK
+bSTestNode4' EQ _  _  _  = EQUALAD
+bSTestNode4' _  EQ _  _  = EQUALBD
+bSTestNode4' _  _  _  _  = REORDER
+
+
+bSRecurseAndEval a b c evalFunc createFunc =
+    let
+        result = evalFunc a c -- Calculate the result from up the tree
+        expectedResult = createFunc a c
     in
-        if vs' == Nothing
-        then (c, Nothing)
-        else let Just vs = vs' in (c, Just (v:vs))
-
--- bAddNoCarry xs ys = reverse (bAddNoCarry' (reverse xs) (reverse ys) O)
--- bAddNoCarry' [] _ _ = []
--- bAddNoCarry' (x:xs) (y:ys) c1 = v : bAddNoCarry' xs ys c2
---     where (c2, v) = bSAdd c1 x y
-
--- bSAddWithout :: B -> B -> B -> Bool
--- bSAddWithout a b c
---     | a > b = bSAddWithout b a c
---     | b > c = bSAddWithout a c b
---     | otherwise = case (a, b, c) of
---         (O, _, _) -> False
---         (X, _, _) -> False
---         (V a, _, _) -> False
---         _ -> True
+        if result == expectedResult -- Does it require a recalc?
+        then createFunc b expectedResult -- No it was as expected
+        else evalFunc b result -- Yes, this might influence backwards
