@@ -5,7 +5,7 @@ import           Seed
 import           SHA
 import           SHAHelper
 
-result count size =
+result size count =
     let
         b = textToChunks "brad" size
         (s0Rot, s1Rot, s0RotW, s1RotW) = ((0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0))
@@ -22,5 +22,5 @@ result count size =
         compressFunc = compressChunk (compressHStep s0Rot s1Rot) (createKWVector s0RotW s1RotW kInit)
     in compressFunc hInit $ m2 : tail (head b)
 
-result1 = result 1 32
-result256 = result 2 256
+result1 = result 32 1
+result256 = result 256 2

@@ -8,14 +8,25 @@ import           Text.Printf
 data N = I | N deriving (Eq, Ord, Show) -- Normal, Inverted
 data B = O | X | V Int N | Ba B B | Bx B B deriving (Eq, Ord, Show)
 
--- instance Show B where
---     show X  = "X"
---     show O  = "O"
---     show (V x a)  = printf "(V %d %s)" x a
---     show (Bx a b) = "(Bx " ++ show a ++ " " ++ show b ++ ")"
---     show (NBx a b) = "(NBx " ++ show a ++ " " ++ show b ++ ")"
---     show (Ba a b) = "(Ba " ++ show a ++ " " ++ show b ++ ")"
---     show (NBa a b) = "(NBa " ++ show a ++ " " ++ show b ++ ")"
+bValid :: B -> B  -- A function to throw errors on bad B
+bValid a =
+    let bError a = error $ "INVALID:\n" ++ showPretty a in
+    case a of
+    (Ba X _) -> bError a
+    (Ba O _) -> bError a
+    (Ba _ X) -> bError a
+    (Ba _ O) -> bError a
+    (Ba Ba{} _) -> bError a
+    (Ba (Bx _ _) _) -> bError a
+    (Ba _ (Bx _ _)) -> bError a
+    (Bx X _) -> bError a
+    (Bx O _) -> bError a
+    (Bx _ X) -> bError a
+    (Bx _ O) -> bError a
+    (Bx (Bx _ _) _) -> bError a
+    -- (Bx Ba{} _) -> bError a
+    -- (Bx _ Ba{}) -> bError a
+    a -> a
 
 nInv N = I
 nInv I = N
@@ -100,7 +111,7 @@ bSAnd a b
     | a == O = O  -- O finishes it
     | a == X = b  -- X ignored
     | a == bSNot b = O  -- X ignored
-    | otherwise = bSAnd' a b
+    | otherwise = bValid $ bSAnd' a b
 -- O *
 -- X *
 -- V V
@@ -140,7 +151,7 @@ bSXor a b
     | a == O = b  -- O Ignore
     | a == X = bSNot b  -- X is invert
     | a == bSNot b = X  -- Xor cancelation (a ^ (X ^ a) -> a ^ a ^ x -> X)
-    | otherwise = bSXor' a b
+    | otherwise = bValid $ bSXor' a b
 -- Dealt with
 -- O *
 -- X *
@@ -296,3 +307,17 @@ bSRecurseAndEval a b c evalFunc createFunc =
         if result == expectedResult -- Does it require a recalc?
         then createFunc b expectedResult -- No it was as expected
         else evalFunc b result -- Yes, this might influence backwards
+
+showPretty :: B -> String
+showPretty a = showPretty' a ""
+showPretty' (Ba a b) spaces = showPretty'' "bSAnd" a b spaces
+showPretty' (Bx a b) spaces = showPretty'' "bSXor" a b spaces
+showPretty' a spaces = spaces ++ show a
+showPretty'' t (V a1 s1) (V a2 s2) spaces =
+        spaces ++ t ++ " (" ++ show (V a1 s1) ++ ") (" ++ show (V a2 s2) ++ ")"
+showPretty'' t a b spaces =
+        spaces ++ "(" ++ t ++ " \n" ++
+    showPretty' a (spaces ++ "  ") ++ "\n" ++
+    showPretty' b (spaces ++ "  ") ++ "\n" ++
+    spaces ++ ")"
+
